@@ -55,6 +55,26 @@ def unwrap_unique_or_non_null(unique_or_nonnull):
         return ptr
 
 
+def get_template_params(type_name):
+    # type: (str) -> List[str]
+    params = []
+    level = 0
+    start = 0
+    for i, c in enumerate(type_name):
+        if c == '<':
+            level += 1
+            if level == 1:
+                start = i + 1
+        elif c == '>':
+            level -= 1
+            if level == 0:
+                params.append(type_name[start:i].strip())
+        elif c == ',' and level == 1:
+            params.append(type_name[start:i].strip())
+            start = i + 1
+    return params
+
+
 class ValueBuilder:
     def __init__(self, valobj):
         # type: (SBValue) -> None
@@ -267,6 +287,82 @@ class TupleSyntheticProvider:
             field = self.type.GetFieldAtIndex(index)
         element = self.valobj.GetChildMemberWithName(field.name)
         return self.valobj.CreateValueFromData(str(index), element.GetData(), element.GetType())
+
+    def update(self):
+        # type: () -> None
+        pass
+
+    def has_children(self):
+        # type: () -> bool
+        return True
+
+
+def MSVCEnumSummaryProvider(valobj, _dict):
+    internal = valobj.GetChildMemberWithName("internal")
+    type_name = internal.GetType().name
+    segments = type_name.rsplit("::", 1)
+    if len(segments) > 1:
+        if segments[-1] != "Discriminant$":
+            return segments[-1]
+        else:
+            # Niche-layout enum without data
+            return internal.GetValue()
+    else:
+        return ""
+
+
+class MSVCEnumSyntheticProvider:
+    """Pretty-printer for enums generated with MSVC toolchain.
+
+    More information on implementation in rustc:
+    https://github.com/rust-lang/rust/blob/master/compiler/rustc_codegen_llvm/src/debuginfo/metadata/enums/cpp_like.rs
+    """
+
+    def __init__(self, valobj, _dict):
+        # type: (SBValue, dict) -> None
+        self.valobj = valobj
+        self.variant = None
+        self.size = 0
+
+        type = valobj.GetType()
+        discriminant_raw = valobj.GetChildMemberWithName("discriminant")
+        discriminant = discriminant_raw.GetValue()
+
+        dataful_variant = valobj.GetChildMemberWithName("dataful_variant")
+        if dataful_variant:
+            # Niche-layout enum, `type.name` is supposed to look like "enum$<Option<Foo>, 1, 100, Some>"
+            items = get_template_params(type.name)
+            start = int(items[-3])
+            end = int(items[-2])
+            if discriminant.isnumeric() and start <= int(discriminant) <= end:
+                self.variant = dataful_variant
+                self.size = 1
+            else:
+                self.variant = discriminant_raw
+                self.size = 0
+        else:
+            # Directly tagged enums
+            for field in type.fields:
+                field_variant = field.type.name
+                if discriminant is not None and field_variant.endswith("::" + discriminant):
+                    self.variant = self.valobj.GetChildMemberWithName(field.name)
+                    self.size = self.variant.GetNumChildren()
+
+    def num_children(self):
+        # type: () -> int
+        return self.size
+
+    def get_child_index(self, name):
+        # type: (str) -> int
+        if name == "internal":
+            return self.size
+        return self.variant.GetIndexOfChildWithName(name)
+
+    def get_child_at_index(self, index):
+        # type: (int) -> SBValue
+        if index == self.size:
+            return self.variant
+        return self.variant.GetChildAtIndex(index)
 
     def update(self):
         # type: () -> None
