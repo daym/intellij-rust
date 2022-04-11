@@ -91,6 +91,7 @@ private fun GeneralCommandLine.toTargeted(
     commandLineBuilder.setCharset(charset)
 
     val targetedExePath = if (uploadExecutable) setup.requestUploadIntoTarget(exePath) else TargetValue.fixed(exePath)
+    @Suppress("UsePropertyAccessSyntax") // BACKCOMPAT: 2021.3
     commandLineBuilder.setExePath(targetedExePath)
 
     val workDirectory = workDirectory

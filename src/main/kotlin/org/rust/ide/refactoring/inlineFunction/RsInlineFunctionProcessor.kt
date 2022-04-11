@@ -158,7 +158,7 @@ class RsInlineFunctionProcessor(
             val hasStatements = when (tailExpr) {
                 null -> statements.size > 1 ||
                     statements.size == 1 && statements[0].descendantsOfType<RsRetExpr>().isEmpty()
-                else -> statements.size > 0
+                else -> statements.isNotEmpty()
             }
 
             return hasStatements && element.ancestorOrSelf<RsWhileExpr>() != null

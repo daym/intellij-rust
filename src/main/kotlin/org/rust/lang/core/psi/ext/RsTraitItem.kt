@@ -111,11 +111,6 @@ private val RsTraitItem.superTraits: Sequence<BoundElement<RsTraitItem>>
             .mapNotNull { it.bound.traitRef?.resolveToBoundTrait() }
     }
 
-val RsTraitItem.isSized: Boolean
-    get() {
-        return implementedTrait?.flattenHierarchy.orEmpty().any { it.element.isSizedTrait }
-    }
-
 fun RsTraitItem.withSubst(vararg subst: Ty): BoundElement<RsTraitItem> {
     val typeParameterList = typeParameters
     val substitution = if (typeParameterList.size != subst.size) {

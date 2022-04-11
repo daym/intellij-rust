@@ -28,6 +28,7 @@ class RsSuggestedRefactoringSupport : SuggestedRefactoringSupport {
 
     override fun importsRange(psiFile: PsiFile): TextRange? = null
 
+    @Deprecated("Use isAnchor instead", replaceWith = ReplaceWith("isAnchor(psiElement)"))
     override fun isDeclaration(psiElement: PsiElement): Boolean = when (psiElement) {
         // May return true for const pat binding since we can't distinguish them
         // without name resolution, which is forbidden here.

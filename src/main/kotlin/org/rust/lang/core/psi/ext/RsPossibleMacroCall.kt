@@ -21,12 +21,10 @@ import org.rust.lang.core.macros.*
 import org.rust.lang.core.macros.decl.MACRO_DOLLAR_CRATE_IDENTIFIER
 import org.rust.lang.core.macros.errors.GetMacroExpansionError
 import org.rust.lang.core.macros.errors.ResolveMacroWithoutPsiError
-import org.rust.lang.core.macros.proc.ProcMacroApplicationService
 import org.rust.lang.core.psi.*
 import org.rust.lang.core.psi.ext.RsPossibleMacroCallKind.MacroCall
 import org.rust.lang.core.psi.ext.RsPossibleMacroCallKind.MetaItem
 import org.rust.lang.core.resolve.DEFAULT_RECURSION_LIMIT
-import org.rust.lang.core.resolve.KnownDerivableTrait
 import org.rust.lang.core.resolve.resolveDollarCrateIdentifier
 import org.rust.lang.core.resolve2.resolveToMacroWithoutPsi
 import org.rust.lang.core.resolve2.resolveToProcMacroWithoutPsi
@@ -92,13 +90,6 @@ val RsPossibleMacroCall.canBeMacroCall: Boolean
     get() = when (val kind = kind) {
         is MacroCall -> true
         is MetaItem -> RsProcMacroPsiUtil.canBeProcMacroCall(kind.meta)
-    }
-
-val RsPossibleMacroCall.shouldSkipMacroExpansion: Boolean
-    get() = when (val kind = kind) {
-        is MetaItem -> !ProcMacroApplicationService.isEnabled()
-            || RsProcMacroPsiUtil.canBeCustomDerive(kind.meta) && KnownDerivableTrait.shouldUseHardcodedTraitDerive(kind.meta.name)
-        else -> false
     }
 
 val RsPossibleMacroCall.isTopLevelExpansion: Boolean

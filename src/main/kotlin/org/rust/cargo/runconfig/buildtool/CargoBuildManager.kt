@@ -36,13 +36,11 @@ import org.jetbrains.annotations.TestOnly
 import org.rust.cargo.project.model.cargoProjects
 import org.rust.cargo.runconfig.CargoCommandRunner
 import org.rust.cargo.runconfig.CargoRunState
-import org.rust.cargo.runconfig.RsCommandConfiguration
 import org.rust.cargo.runconfig.addFormatJsonOption
 import org.rust.cargo.runconfig.command.CargoCommandConfiguration
 import org.rust.cargo.runconfig.command.ParsedCommand
 import org.rust.cargo.runconfig.command.hasRemoteTarget
 import org.rust.cargo.runconfig.target.localBuildArgsForRemoteRun
-import org.rust.cargo.runconfig.wasmpack.WasmPackBuildTaskProvider
 import org.rust.cargo.toolchain.CargoCommandLine
 import org.rust.cargo.util.CargoArgsParser.Companion.parseArgs
 import org.rust.cargo.util.parseSemVer
@@ -63,15 +61,6 @@ object CargoBuildManager {
         CompletableFuture.completedFuture(CargoBuildResult(succeeded = false, canceled = true, started = 0))
 
     private val MIN_RUSTC_VERSION: SemVer = "1.48.0".parseSemVer()
-
-    val RsCommandConfiguration.isBuildToolWindowEnabled: Boolean
-        get() {
-            if (!project.isBuildToolWindowAvailable) return false
-            return beforeRunTasks.any { task ->
-                task is CargoBuildTaskProvider.BuildTask ||
-                    task is WasmPackBuildTaskProvider.BuildTask
-            }
-        }
 
     val Project.isBuildToolWindowAvailable: Boolean
         get() {
