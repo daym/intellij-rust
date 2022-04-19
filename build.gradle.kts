@@ -604,7 +604,7 @@ project(":ml-completion") {
 task("runPrettyPrintersTests") {
     doLast {
         // https://github.com/intellij-rust/intellij-rust/issues/8482
-        if (platformVersion >= 221) return@doLast
+        if (platformVersion == 221) return@doLast
         val lldbPath = when {
             // TODO: Use `lldb` Python module from CLion distribution
             isFamily(FAMILY_MAC) -> "/Applications/Xcode.app/Contents/SharedFrameworks/LLDB.framework/Resources/Python"
@@ -627,6 +627,10 @@ task("runPrettyPrintersTests") {
             // Use UTF-8 to properly decode test output in `lldb_batchmode.py`
             "cmd /C set PYTHONIOENCODING=utf8 & $runCommand".execute("pretty_printers_tests")
         } else {
+            val lldbBundlePath = "$projectDir/deps/${clionVersion.replaceFirst("CL", "clion")}/bin/lldb/linux/"
+            "chmod -R 755 ./bin".execute(lldbBundlePath)
+            "chmod -R 755 ./lib".execute(lldbBundlePath)
+
             runCommand.execute("pretty_printers_tests")
         }
 
@@ -639,6 +643,10 @@ task("runPrettyPrintersTests") {
             }
             else -> error("Unsupported OS")
         }
+        val gdbBundlePath = "$projectDir/deps/${clionVersion.replaceFirst("CL", "clion")}/bin/gdb/linux/"
+        "chmod -R 755 ./bin".execute(gdbBundlePath)
+        "chmod -R 755 ./lib".execute(gdbBundlePath)
+
         "cargo run --package pretty_printers_test --bin pretty_printers_test -- gdb $gdbBinary".execute("pretty_printers_tests")
     }
 }
