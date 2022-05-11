@@ -24,7 +24,7 @@ import org.rust.lang.core.types.ty.Ty
 val RsTypeParameter.bounds: List<RsPolybound> get() {
     val owner = parent?.parent as? RsGenericDeclaration
     val whereBounds =
-        owner?.whereClause?.wherePredList.orEmpty()
+        owner?.wherePreds.orEmpty()
             .filter { (it.typeReference?.skipParens() as? RsBaseType)?.path?.reference?.resolve() == this }
             .flatMap { it.typeParamBounds?.polyboundList.orEmpty() }
 
@@ -47,7 +47,7 @@ val RsTypeParameter.isSized: Boolean
         // We just check `?` before trait name in bound because at this moment only `Sized` trait can have `?` modifier
         val owner = parent?.parent as? RsGenericDeclaration
         val whereBounds =
-            owner?.whereClause?.wherePredList.orEmpty()
+            owner?.wherePreds.orEmpty()
                 .filter { (it.typeReference?.skipParens() as? RsBaseType)?.name == name }
                 .flatMap { it.typeParamBounds?.polyboundList.orEmpty() }
         val bounds = typeParamBounds?.polyboundList.orEmpty() + whereBounds

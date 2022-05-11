@@ -11,6 +11,7 @@ import com.intellij.psi.PsiElement
 import org.rust.lang.core.psi.*
 import org.rust.lang.core.psi.ext.*
 
+// TODO: add tests
 class MoveTypeConstraintToParameterListIntention : RsElementBaseIntentionAction<RsWhereClause>() {
 
     override fun getText() = "Move type constraint to parameter list"

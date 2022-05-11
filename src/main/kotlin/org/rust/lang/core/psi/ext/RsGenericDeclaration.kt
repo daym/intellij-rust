@@ -39,3 +39,10 @@ val RsGenericDeclaration.requiredGenericParameters: List<RsGenericParameter>
             else -> false
         }
     }
+
+val RsGenericDeclaration.wherePreds: List<RsWherePred>
+    get() = if (this is RsTypeAlias && owner is RsAbstractableOwner.Impl) {
+        whereClauseList.flatMap { it.wherePredList }
+    } else {
+        whereClause?.wherePredList.orEmpty()
+    }
