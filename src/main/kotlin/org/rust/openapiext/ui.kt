@@ -122,3 +122,7 @@ fun selectElement(element: RsElement, editor: Editor) {
     editor.scrollingModel.scrollToCaret(ScrollType.RELATIVE)
     editor.selectionModel.setSelection(start, element.textRange.endOffset)
 }
+
+private fun unused() {
+    val x = 42;
+}
