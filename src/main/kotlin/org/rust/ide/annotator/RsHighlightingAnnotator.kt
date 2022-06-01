@@ -34,7 +34,7 @@ class RsHighlightingAnnotator : AnnotatorBase() {
             else -> null
         } ?: return
 
-        if (!element.existsAfterExpansion) return
+        if (!element.existsAfterExpansion(holder.currentAnnotationSession.currentCrate())) return
         if (element.ancestors.any { it is RsAttr && it.isDisabledCfgAttrAttribute }) return
 
         val severity = if (isUnitTestMode) color.testSeverity else HighlightSeverity.INFORMATION
