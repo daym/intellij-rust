@@ -19,8 +19,9 @@ import com.intellij.util.ui.UIUtil
 import org.rust.cargo.project.configurable.RsExternalLinterConfigurable
 import org.rust.cargo.project.model.CargoProject
 import org.rust.cargo.project.model.CargoProjectsService
+import org.rust.cargo.project.settings.RsProjectSettingsServiceBase.*
+import org.rust.cargo.project.settings.RsProjectSettingsServiceBase.Companion.RUST_SETTINGS_TOPIC
 import org.rust.cargo.project.settings.RustProjectSettingsService
-import org.rust.cargo.project.settings.RustProjectSettingsService.*
 import org.rust.cargo.project.settings.rustSettings
 import org.rust.cargo.runconfig.hasCargoProject
 import org.rust.cargo.toolchain.ExternalLinter
@@ -78,9 +79,11 @@ class RsExternalLinterWidget(private val project: Project) : TextPanel.WithIconA
                 }
             }.installOn(this, true)
 
-            project.messageBus.connect(this).subscribe(RustProjectSettingsService.RUST_SETTINGS_TOPIC, object : RustSettingsListener {
-                override fun rustSettingsChanged(e: RustSettingsChangedEvent) {
-                    if (e.isChanged(State::externalLinter) || e.isChanged(State::runExternalLinterOnTheFly)) {
+            project.messageBus.connect(this).subscribe(RUST_SETTINGS_TOPIC, object : RsSettingsListener {
+                override fun <T : StateBase<T>> settingsChanged(e: SettingsChangedEventBase<T>) {
+                    if (e !is RustProjectSettingsService.SettingsChangedEvent) return
+                    if (e.isChanged(RustProjectSettingsService.State::externalLinter) ||
+                        e.isChanged(RustProjectSettingsService.State::runExternalLinterOnTheFly)) {
                         update()
                     }
                 }

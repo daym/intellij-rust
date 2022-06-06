@@ -17,7 +17,8 @@ import com.intellij.util.DocumentUtil
 import com.intellij.util.containers.ContainerUtil
 import org.rust.cargo.project.model.CargoProject
 import org.rust.cargo.project.model.cargoProjects
-import org.rust.cargo.project.settings.rustfmtSettings
+import org.rust.cargo.project.settings.rustSettings
+import org.rust.cargo.project.settings.rustfmt
 import org.rust.cargo.project.settings.toolchain
 import org.rust.cargo.runconfig.command.workingDirectory
 import org.rust.cargo.toolchain.tools.Rustfmt
@@ -46,7 +47,7 @@ class RustfmtWatcher {
         val file = document.virtualFile ?: return false
         if (file.isNotRustFile) return false
         val project = guessProjectForFile(file) ?: return false
-        if (!project.rustfmtSettings.state.runRustfmtOnSave) return false
+        if (!project.rustSettings.rustfmt.runRustfmtOnSave) return false
         return documentsToReformatLater.add(document)
     }
 
@@ -100,7 +101,7 @@ class RustfmtWatcher {
 
         private fun reformatDocuments(cargoProject: CargoProject, documents: List<Document>) {
             val project = cargoProject.project
-            if (!project.rustfmtSettings.state.runRustfmtOnSave) return
+            if (!project.rustSettings.rustfmt.runRustfmtOnSave) return
             val rustfmt = project.toolchain?.rustfmt() ?: return
             if (checkNeedInstallRustfmt(cargoProject.project, cargoProject.workingDirectory)) return
             documents.forEach { rustfmt.reformatDocument(cargoProject, it) }

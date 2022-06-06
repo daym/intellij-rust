@@ -685,7 +685,7 @@ sealed class CargoCheckArgs {
             return FullWorkspace(
                 settings.externalLinter,
                 cargoProject.workingDirectory,
-                settings.compileAllTargets,
+                cargoProject.project.rustSettings.compileAllTargets,
                 settings.externalLinterArguments
             )
         }

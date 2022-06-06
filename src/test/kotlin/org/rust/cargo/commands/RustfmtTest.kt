@@ -16,7 +16,8 @@ import com.intellij.util.ui.UIUtil
 import org.intellij.lang.annotations.Language
 import org.rust.FileTreeBuilder
 import org.rust.cargo.RsWithToolchainTestBase
-import org.rust.cargo.project.settings.rustfmtSettings
+import org.rust.cargo.project.settings.rustSettings
+import org.rust.cargo.project.settings.rustfmt
 import org.rust.cargo.toolchain.RustChannel
 import org.rust.fileTree
 import org.rust.ide.formatter.RustfmtTestmarks
@@ -121,7 +122,7 @@ class RustfmtTest : RsWithToolchainTestBase() {
             println!("Hello, ΣΠ∫!");
         }
     """) {
-        project.rustfmtSettings.modifyTemporary(testRootDisposable) {
+        project.rustSettings.rustfmt.modifyTemporary(testRootDisposable) {
             it.additionalArguments = "--emit files"
         }
         reformatFile(myFixture.editor)
@@ -147,7 +148,7 @@ class RustfmtTest : RsWithToolchainTestBase() {
             println!("Hello, ΣΠ∫!");
         }
     """) {
-        project.rustfmtSettings.modifyTemporary(testRootDisposable) {
+        project.rustSettings.rustfmt.modifyTemporary(testRootDisposable) {
             it.additionalArguments = "--emit=files"
         }
         reformatFile(myFixture.editor)
@@ -173,7 +174,7 @@ class RustfmtTest : RsWithToolchainTestBase() {
             println!("Hello, ΣΠ∫!");
         }
     """) {
-        project.rustfmtSettings.modifyTemporary(testRootDisposable) {
+        project.rustSettings.rustfmt.modifyTemporary(testRootDisposable) {
             it.additionalArguments = "--unstable-features"
             it.channel = RustChannel.NIGHTLY
         }
@@ -200,7 +201,7 @@ class RustfmtTest : RsWithToolchainTestBase() {
         println!("Hello, ΣΠ∫!");
         }
     """) {
-        project.rustfmtSettings.modifyTemporary(testRootDisposable) {
+        project.rustSettings.rustfmt.modifyTemporary(testRootDisposable) {
             it.additionalArguments = "--unstable-features"
             it.channel = RustChannel.STABLE
         }
@@ -229,7 +230,7 @@ class RustfmtTest : RsWithToolchainTestBase() {
             println!("Hello, ΣΠ∫!");
         }
     """) {
-        project.rustfmtSettings.modifyTemporary(testRootDisposable) {
+        project.rustSettings.rustfmt.modifyTemporary(testRootDisposable) {
             it.additionalArguments = "+nightly --unstable-features"
         }
         reformatFile(myFixture.editor)
@@ -298,7 +299,7 @@ class RustfmtTest : RsWithToolchainTestBase() {
             println!("Hello, ΣΠ∫!");
         }
     """) {
-        project.rustfmtSettings.modifyTemporary(testRootDisposable) {
+        project.rustSettings.rustfmt.modifyTemporary(testRootDisposable) {
             it.additionalArguments = "--unstable-features"
             it.channel = RustChannel.NIGHTLY
         }
@@ -325,7 +326,7 @@ class RustfmtTest : RsWithToolchainTestBase() {
             println!("Hello, ΣΠ∫!");
         }
     """) {
-        project.rustfmtSettings.modifyTemporary(testRootDisposable) {
+        project.rustSettings.rustfmt.modifyTemporary(testRootDisposable) {
             it.additionalArguments = "--unstable-features"
             it.channel = RustChannel.STABLE
         }
@@ -351,7 +352,7 @@ class RustfmtTest : RsWithToolchainTestBase() {
         }
     }) {
         myFixture.type("\n\n\n")
-        project.rustfmtSettings.modifyTemporary(testRootDisposable) { it.runRustfmtOnSave = true }
+        project.rustSettings.rustfmt.modifyTemporary(testRootDisposable) { it.runRustfmtOnSave = true }
         saveAllDocuments()
     }
 
@@ -521,7 +522,7 @@ class RustfmtTest : RsWithToolchainTestBase() {
     """)
 
     private fun reformatRange(file: PsiFile, textRange: TextRange = file.textRange, shouldHitTestmark: Boolean = true) {
-        project.rustfmtSettings.modifyTemporary(testRootDisposable) { it.useRustfmt = true }
+        project.rustSettings.rustfmt.modifyTemporary(testRootDisposable) { it.useRustfmt = true }
         val testmark = RustfmtTestmarks.RustfmtUsed
         val checkMark: (() -> Unit) -> Unit = if (shouldHitTestmark) testmark::checkHit else testmark::checkNotHit
         checkMark {
