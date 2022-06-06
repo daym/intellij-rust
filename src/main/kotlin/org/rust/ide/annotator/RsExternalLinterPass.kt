@@ -29,6 +29,7 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.psi.PsiFile
 import com.intellij.util.ui.update.MergingUpdateQueue
 import com.intellij.util.ui.update.Update
+import org.rust.cargo.project.settings.externalLinter
 import org.rust.cargo.project.settings.rustSettings
 import org.rust.cargo.project.settings.toolchain
 import org.rust.cargo.project.workspace.PackageOrigin
@@ -148,7 +149,7 @@ class RsExternalLinterPass(
         get() = annotationHolder.map(HighlightInfo::fromAnnotation)
 
     private val isAnnotationPassEnabled: Boolean
-        get() = myProject.rustSettings.runExternalLinterOnTheFly
+        get() = myProject.rustSettings.externalLinter.runOnTheFly
 
     companion object {
         private val LOG: Logger = logger<RsExternalLinterPass>()

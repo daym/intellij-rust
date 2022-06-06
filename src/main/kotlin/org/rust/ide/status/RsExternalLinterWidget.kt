@@ -19,9 +19,10 @@ import com.intellij.util.ui.UIUtil
 import org.rust.cargo.project.configurable.RsExternalLinterConfigurable
 import org.rust.cargo.project.model.CargoProject
 import org.rust.cargo.project.model.CargoProjectsService
+import org.rust.cargo.project.settings.ExternalLinterProjectSettingsService
 import org.rust.cargo.project.settings.RsProjectSettingsServiceBase.*
 import org.rust.cargo.project.settings.RsProjectSettingsServiceBase.Companion.RUST_SETTINGS_TOPIC
-import org.rust.cargo.project.settings.RustProjectSettingsService
+import org.rust.cargo.project.settings.externalLinter
 import org.rust.cargo.project.settings.rustSettings
 import org.rust.cargo.runconfig.hasCargoProject
 import org.rust.cargo.toolchain.ExternalLinter
@@ -50,8 +51,8 @@ class RsExternalLinterWidgetUpdater(private val project: Project) : CargoProject
 class RsExternalLinterWidget(private val project: Project) : TextPanel.WithIconAndArrows(), CustomStatusBarWidget {
     private var statusBar: StatusBar? = null
 
-    private val linter: ExternalLinter get() = project.rustSettings.externalLinter
-    private val turnedOn: Boolean get() = project.rustSettings.runExternalLinterOnTheFly
+    private val linter: ExternalLinter get() = project.rustSettings.externalLinter.tool
+    private val turnedOn: Boolean get() = project.rustSettings.externalLinter.runOnTheFly
 
     var inProgress: Boolean = false
         set(value) {
@@ -81,9 +82,9 @@ class RsExternalLinterWidget(private val project: Project) : TextPanel.WithIconA
 
             project.messageBus.connect(this).subscribe(RUST_SETTINGS_TOPIC, object : RsSettingsListener {
                 override fun <T : StateBase<T>> settingsChanged(e: SettingsChangedEventBase<T>) {
-                    if (e !is RustProjectSettingsService.SettingsChangedEvent) return
-                    if (e.isChanged(RustProjectSettingsService.State::externalLinter) ||
-                        e.isChanged(RustProjectSettingsService.State::runExternalLinterOnTheFly)) {
+                    if (e !is ExternalLinterProjectSettingsService.SettingsChangedEvent) return
+                    if (e.isChanged(ExternalLinterProjectSettingsService.State::tool) ||
+                        e.isChanged(ExternalLinterProjectSettingsService.State::runOnTheFly)) {
                         update()
                     }
                 }

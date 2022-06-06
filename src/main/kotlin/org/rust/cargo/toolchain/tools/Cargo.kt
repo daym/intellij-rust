@@ -32,6 +32,7 @@ import org.rust.cargo.CargoConstants
 import org.rust.cargo.CfgOptions
 import org.rust.cargo.project.model.CargoProject
 import org.rust.cargo.project.model.cargoProjects
+import org.rust.cargo.project.settings.externalLinter
 import org.rust.cargo.project.settings.rustSettings
 import org.rust.cargo.project.settings.toolchain
 import org.rust.cargo.project.workspace.CargoWorkspace
@@ -407,7 +408,14 @@ class Cargo(
                     }
                     addAll(ParametersListUtil.parse(args.extraArguments))
                 }
-                CargoCommandLine.forTarget(args.target, checkCommand, arguments, usePackageOption = false)
+                CargoCommandLine.forTarget(
+                    args.target,
+                    checkCommand,
+                    arguments,
+                    args.channel,
+                    EnvironmentVariablesData.create(args.envs, true),
+                    usePackageOption = false
+                )
             }
             is CargoCheckArgs.FullWorkspace -> {
                 val arguments = buildList<String> {
@@ -418,7 +426,13 @@ class Cargo(
                     }
                     addAll(ParametersListUtil.parse(args.extraArguments))
                 }
-                CargoCommandLine(checkCommand, args.cargoProjectDirectory, arguments)
+                CargoCommandLine(
+                    checkCommand,
+                    args.cargoProjectDirectory,
+                    arguments,
+                    channel = args.channel,
+                    environmentVariables = EnvironmentVariablesData.create(args.envs, true)
+                )
             }
         }
 
@@ -654,39 +668,49 @@ sealed class CargoCheckArgs {
     abstract val linter: ExternalLinter
     abstract val cargoProjectDirectory: Path
     abstract val extraArguments: String
+    abstract val channel: RustChannel
+    abstract val envs: Map<String, String>
 
     data class SpecificTarget(
         override val linter: ExternalLinter,
         override val cargoProjectDirectory: Path,
         val target: CargoWorkspace.Target,
-        override val extraArguments: String
+        override val extraArguments: String,
+        override val channel: RustChannel,
+        override val envs: Map<String, String>
     ) : CargoCheckArgs()
 
     data class FullWorkspace(
         override val linter: ExternalLinter,
         override val cargoProjectDirectory: Path,
         val allTargets: Boolean,
-        override val extraArguments: String
+        override val extraArguments: String,
+        override val channel: RustChannel,
+        override val envs: Map<String, String>
     ) : CargoCheckArgs()
 
     companion object {
         fun forTarget(project: Project, target: CargoWorkspace.Target): CargoCheckArgs {
-            val settings = project.rustSettings
+            val settings = project.rustSettings.externalLinter
             return SpecificTarget(
-                settings.externalLinter,
+                settings.tool,
                 target.pkg.workspace.contentRoot,
                 target,
-                settings.externalLinterArguments
+                settings.additionalArguments,
+                settings.channel,
+                settings.envs
             )
         }
 
         fun forCargoProject(cargoProject: CargoProject): CargoCheckArgs {
-            val settings = cargoProject.project.rustSettings
+            val settings = cargoProject.project.rustSettings.externalLinter
             return FullWorkspace(
-                settings.externalLinter,
+                settings.tool,
                 cargoProject.workingDirectory,
                 cargoProject.project.rustSettings.compileAllTargets,
-                settings.externalLinterArguments
+                settings.additionalArguments,
+                settings.channel,
+                settings.envs
             )
         }
     }

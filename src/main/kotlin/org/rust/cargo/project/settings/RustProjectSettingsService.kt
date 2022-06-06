@@ -47,9 +47,6 @@ class RustProjectSettingsService(project: Project) : RsProjectSettingsServiceBas
     val explicitPathToStdlib: String? get() = state.explicitPathToStdlib
     val autoShowErrorsInEditor: ThreeState get() = ThreeState.fromBoolean(state.autoShowErrorsInEditor)
     val autoUpdateEnabled: Boolean get() = state.autoUpdateEnabled
-    val externalLinter: ExternalLinter get() = state.externalLinter
-    val runExternalLinterOnTheFly: Boolean get() = state.runExternalLinterOnTheFly
-    val externalLinterArguments: String get() = state.externalLinterArguments
     val compileAllTargets: Boolean get() = state.compileAllTargets
     val useOffline: Boolean get() = state.useOffline
     val macroExpansionEngine: MacroExpansionEngine get() = state.macroExpansionEngine
@@ -65,11 +62,11 @@ class RustProjectSettingsService(project: Project) : RsProjectSettingsServiceBas
         // provide path to stdlib explicitly.
         @AffectsCargoMetadata
         var explicitPathToStdlib by string()
-        @AffectsHighlighting
+        // BACKCOMPAT: 2022.2
         var externalLinter by enum(ExternalLinter.DEFAULT)
-        @AffectsHighlighting
+        // BACKCOMPAT: 2022.2
         var runExternalLinterOnTheFly by property(false)
-        @AffectsHighlighting
+        // BACKCOMPAT: 2022.2
         var externalLinterArguments by property("") { it.isEmpty() }
         @AffectsHighlighting
         var compileAllTargets by property(true)

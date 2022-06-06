@@ -1038,6 +1038,8 @@
 
         <projectService serviceImplementation="org.rust.cargo.project.settings.RustProjectSettingsService"/>
 
+        <projectService serviceImplementation="org.rust.cargo.project.settings.ExternalLinterProjectSettingsService"/>
+
         <projectService serviceImplementation="org.rust.cargo.project.settings.RustfmtProjectSettingsService"/>
 
         <projectService serviceInterface="org.rust.cargo.project.model.CargoProjectsService"

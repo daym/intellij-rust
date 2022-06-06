@@ -12,7 +12,6 @@ import org.junit.internal.runners.JUnit38ClassRunner
 import org.junit.runner.RunWith
 import org.rust.cargo.project.settings.RustProjectSettingsService
 import org.rust.cargo.project.settings.RustProjectSettingsService.MacroExpansionEngine
-import org.rust.cargo.toolchain.ExternalLinter
 import org.rust.cargo.toolchain.RsLocalToolchain
 import org.rust.openapiext.elementFromXmlString
 import org.rust.openapiext.toXmlString
@@ -48,10 +47,7 @@ class RustProjectSettingsServiceTest : LightPlatformTestCase() {
 
         assertEquals(RsLocalToolchain(Paths.get("/")), service.toolchain)
         assertEquals(false, service.autoUpdateEnabled)
-        assertEquals(ExternalLinter.CLIPPY, service.externalLinter)
         assertEquals("/stdlib", service.explicitPathToStdlib)
-        assertEquals(true, service.runExternalLinterOnTheFly)
-        assertEquals("--no-default-features", service.externalLinterArguments)
         assertEquals(false, service.compileAllTargets)
         assertEquals(true, service.useOffline)
         assertEquals(MacroExpansionEngine.DISABLED, service.macroExpansionEngine)
