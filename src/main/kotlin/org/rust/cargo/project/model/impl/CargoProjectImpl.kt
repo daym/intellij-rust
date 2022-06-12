@@ -9,7 +9,9 @@ import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.execution.RunManager
 import com.intellij.ide.impl.isTrusted
 import com.intellij.notification.NotificationType
+import com.intellij.notification.Notifications
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.application.invokeAndWaitIfNeeded
 import com.intellij.openapi.application.invokeLater
 import com.intellij.openapi.application.runWriteAction
@@ -48,27 +50,28 @@ import org.rust.cargo.project.settings.RustProjectSettingsService
 import org.rust.cargo.project.settings.RustProjectSettingsService.RustSettingsChangedEvent
 import org.rust.cargo.project.settings.RustProjectSettingsService.RustSettingsListener
 import org.rust.cargo.project.settings.rustSettings
+import org.rust.cargo.project.settings.toolchain
 import org.rust.cargo.project.toolwindow.CargoToolWindow.Companion.initializeToolWindow
 import org.rust.cargo.project.workspace.*
 import org.rust.cargo.runconfig.command.workingDirectory
 import org.rust.cargo.toolchain.RsToolchainBase
+import org.rust.cargo.toolchain.impl.RustcVersion
 import org.rust.cargo.util.AutoInjectedCrates
+import org.rust.ide.notifications.RsNotifications
 import org.rust.ide.notifications.showBalloon
 import org.rust.lang.RsFileType
+import org.rust.lang.core.macros.errors.ProcMacroExpansionError.*
 import org.rust.lang.core.macros.macroExpansionManager
-import org.rust.openapiext.TaskResult
-import org.rust.openapiext.isUnitTestMode
-import org.rust.openapiext.modules
-import org.rust.openapiext.pathAsPath
-import org.rust.stdext.AsyncValue
-import org.rust.stdext.applyWithSymlink
-import org.rust.stdext.exhaustive
-import org.rust.stdext.mapNotNullToSet
+import org.rust.lang.core.macros.proc.RustcCompatibilityChecker
+import org.rust.lang.core.macros.proc.RustcCompatibilityChecker.IncompatibilityCause.*
+import org.rust.openapiext.*
+import org.rust.stdext.*
 import org.rust.taskQueue
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionException
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
 
@@ -181,7 +184,8 @@ open class CargoProjectsServiceImpl(
     // Guarded by the platform RWLock
     override var initialized: Boolean = false
 
-    private var isLegacyRustNotificationShowed: Boolean = false
+    private var isLegacyRustNotificationShown: Boolean = false
+    private var isProcMacroIncompatibilityNotificationShown: AtomicBoolean = AtomicBoolean(false)
 
     override fun findProjectForFile(file: VirtualFile): CargoProject? =
         file.applyWithSymlink { directoryIndex.getInfoForFile(it).takeIf { info -> info !== noProjectMarker } }
@@ -403,22 +407,74 @@ open class CargoProjectsServiceImpl(
             }
 
     private fun checkRustVersion(projects: List<CargoProjectImpl>) {
-        val minToolchainVersion = projects.asSequence()
-            .mapNotNull { it.rustcInfo?.version?.semver }
-            .minOrNull()
-        val isUnsupportedRust = minToolchainVersion != null &&
-            minToolchainVersion < RsToolchainBase.MIN_SUPPORTED_TOOLCHAIN
-        @Suppress("LiftReturnOrAssignment")
-        if (isUnsupportedRust) {
-            if (!isLegacyRustNotificationShowed) {
-                val content = "Rust <b>$minToolchainVersion</b> is no longer supported. " +
+        val (minRustcInfo, minRustcVersion) = projects.asSequence()
+            .mapNotNull { it.rustcInfo }
+            .mapNotNull { info -> info.version?.let { info to it } }
+            .minByOrNull { it.second.semver }
+            ?: return
+        if (minRustcVersion.semver < RsToolchainBase.MIN_SUPPORTED_TOOLCHAIN) {
+            val minVersionForDisplay = "${minRustcVersion.semver}-${minRustcVersion.commitDate}"
+            if (!isLegacyRustNotificationShown) {
+                val content = "Rust <b>$minVersionForDisplay</b> is no longer supported. " +
                     "It may lead to unexpected errors. " +
                     "Consider upgrading your toolchain to at least <b>${RsToolchainBase.MIN_SUPPORTED_TOOLCHAIN}</b>"
                 project.showBalloon(content, NotificationType.WARNING)
             }
-            isLegacyRustNotificationShowed = true
+            isLegacyRustNotificationShown = true
         } else {
-            isLegacyRustNotificationShowed = false
+            isLegacyRustNotificationShown = false
+
+            val toolchain = project.toolchain
+            if (toolchain != null && !isUnitTestMode) {
+                RustcCompatibilityChecker.getInstance()
+                    .isRustcCompatibleWithProcMacroExpander(project, toolchain, minRustcInfo, minRustcVersion)
+                    .thenApply { result ->
+                        @Suppress("LiftReturnOrAssignment")
+                        if (result is RsResult.Err) {
+                            if (isProcMacroIncompatibilityNotificationShown.compareAndSet(false, true)) {
+                                showProcMacroIncompatibilityWarning(minRustcVersion, result)
+                            }
+                        } else {
+                            isProcMacroIncompatibilityNotificationShown.set(false)
+                        }
+                    }
+            }
+        }
+    }
+
+    private fun showProcMacroIncompatibilityWarning(minRustcVersion: RustcVersion, result: RsResult.Err<RustcCompatibilityChecker.IncompatibilityCause>) {
+        val minVersionForDisplay = "${minRustcVersion.semver}-${minRustcVersion.commitDate}"
+        val heading = "IntelliJ Rust can't expand procedural macros using Rust <b>$minVersionForDisplay</b>. "
+        val (content, actions) = when (result.err) {
+            TooOldRustCompiler -> "$heading The Rust compiler is too old. Consider upgrading your toolchain to " +
+                "more recent version" to null
+            ProcMacroCrateCompilationError -> "$heading Can't compile the reference proc macro to perform the check. " +
+                "See logs for more details" to listOf("ShowLog", "Rust.CreateNewGithubIssue")
+            is ExpansionError -> when (result.err.error) {
+                CantRunExpander -> "$heading Error occurred during `${RsPathManager.INTELLIJ_RUST_NATIVE_HELPER}` " +
+                    "process creation. See logs for more details" to listOf("ShowLog", "Rust.CreateNewGithubIssue")
+                ExecutableNotFound -> "IntelliJ Rust can't expand procedural macros: " +
+                    "`${RsPathManager.INTELLIJ_RUST_NATIVE_HELPER}` executable is not found. " +
+                    "Maybe it's not provided for your platform/operating system by IntelliJ Rust" to
+                    listOf("Rust.CreateNewGithubIssue")
+                ProcMacroExpansionIsDisabled -> null to null
+                UnsupportedRustcVersion -> null to null // unreachable
+                IOExceptionThrown, is ProcessAborted, is ServerSideError, is Timeout -> {
+                    "$heading It looks like the version is too recent. Consider downgrading your Rust toolchain " +
+                        "to a previous version or try to update IntelliJ Rust plugin" to listOf("CheckForUpdate")
+                }
+            }
+        }
+        if (content != null) {
+            val notification = RsNotifications.pluginNotifications()
+                .createNotification("Can't expand proc macros", content, NotificationType.ERROR)
+            for (actionId in actions.orEmpty()) {
+                val action = ActionManager.getInstance().getAction(actionId)
+                if (action != null) {
+                    notification.addAction(action)
+                }
+            }
+            Notifications.Bus.notify(notification, project)
         }
     }
 

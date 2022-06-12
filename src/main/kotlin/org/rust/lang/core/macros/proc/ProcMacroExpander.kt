@@ -14,17 +14,24 @@ import org.rust.lang.core.macros.*
 import org.rust.lang.core.macros.errors.ProcMacroExpansionError
 import org.rust.lang.core.macros.errors.ProcMacroExpansionError.ExecutableNotFound
 import org.rust.lang.core.macros.errors.ProcMacroExpansionError.ProcMacroExpansionIsDisabled
+import org.rust.lang.core.macros.proc.RustcCompatibilityChecker.IncompatibilityCause
 import org.rust.lang.core.macros.tt.*
 import org.rust.lang.core.parser.createRustPsiBuilder
 import org.rust.openapiext.RsPathManager.INTELLIJ_RUST_NATIVE_HELPER
+import org.rust.openapiext.isUnitTestMode
 import org.rust.stdext.RsResult
 import org.rust.stdext.RsResult.Err
+import org.rust.stdext.andThen
+import org.rust.stdext.getWithCheckCanceled
 import java.io.IOException
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.Future
 import java.util.concurrent.TimeoutException
 
 class ProcMacroExpander(
     private val project: Project,
     private val toolchain: RsToolchainBase? = project.toolchain,
+    private val isRustcCompatible: Future<out RsResult<Unit, IncompatibilityCause>> = CompletableFuture.completedFuture(RsResult.Ok(Unit)),
     private val server: ProcMacroServerPool? = toolchain?.let { ProcMacroApplicationService.getInstance().getServer(it) },
     private val timeout: Long = Registry.get("org.rust.macros.proc.timeout").asInteger().toLong(),
 ) : MacroExpander<RsProcMacroData, ProcMacroExpansionError>() {
@@ -76,6 +83,14 @@ class ProcMacroExpander(
     ): RsResult<TokenTree.Subtree, ProcMacroExpansionError> {
         val remoteLib = toolchain?.toRemotePath(lib) ?: lib
         val server = server ?: return Err(if (isEnabled) ExecutableNotFound else ProcMacroExpansionIsDisabled)
+
+        val rustcCompatCheck = isRustcCompatible.getWithCheckCanceled(60_000)
+            .andThen { it }
+        if (rustcCompatCheck is Err) {
+            if (isUnitTestMode) error("Reference proc macro expansion failed with error: ${rustcCompatCheck.err}")
+            return Err(ProcMacroExpansionError.UnsupportedRustcVersion)
+        }
+
         val envMapped = env.mapValues { (_, v) -> toolchain?.toRemotePath(v) ?: v }
         val request = Request.ExpandMacro(
             FlatTree.fromSubtree(macroCallBody),
