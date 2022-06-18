@@ -10,6 +10,9 @@ on:
                 required: true
                 type: boolean
 
+env:
+    CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+
 jobs:
     build-native-code:
         strategy:
