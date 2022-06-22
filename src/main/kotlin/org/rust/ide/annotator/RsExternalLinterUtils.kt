@@ -280,7 +280,7 @@ fun RustcSpan.isValid(): Boolean =
     line_end > line_start || (line_end == line_start && column_end >= column_start)
 
 private val ERROR_REGEX: Regex = """E\d{4}""".toRegex()
-private val URL_REGEX: Regex = URLUtil.URL_PATTERN.toRegex()
+private val URL_REGEX: Regex = "(?<!href=['\"])${URLUtil.URL_PATTERN}(?!['\"])".toRegex()
 
 private fun ErrorCode?.formatAsLink(): String? {
     if (this?.code?.matches(ERROR_REGEX) != true) return null
