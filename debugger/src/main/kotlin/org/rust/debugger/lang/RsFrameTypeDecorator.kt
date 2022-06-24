@@ -5,11 +5,14 @@
 
 package org.rust.debugger.lang
 
+import RustMSVCNameLexer
+import RustMSVCNameParser
 import com.jetbrains.cidr.execution.debugger.CidrFrameTypeDecorator
 import com.jetbrains.cidr.execution.debugger.CidrStackFrame
 import com.jetbrains.cidr.execution.debugger.backend.lldb.LLDBDriverConfiguration
 import com.jetbrains.cidr.execution.debugger.evaluation.CidrPhysicalValue
 import com.jetbrains.cidr.toolchains.OSType
+import org.antlr.v4.runtime.*
 
 class RsFrameTypeDecorator(private val frame: CidrStackFrame) : CidrFrameTypeDecorator {
     override fun getValueDisplayType(value: CidrPhysicalValue, renderForUiLabel: Boolean): String {
@@ -31,6 +34,13 @@ class RsFrameTypeDecorator(private val frame: CidrStackFrame) : CidrFrameTypeDec
             */
 
             val type = value.type
+            val stream = CharStreams.fromString(type)
+            val rustMSVCNameLexer = RustMSVCNameLexer(stream)
+            val tokens = CommonTokenStream(rustMSVCNameLexer)
+            val rustMSVCNameParser = RustMSVCNameParser(tokens)
+            val parseTree = rustMSVCNameParser.parse()
+            val stringTree = parseTree.toStringTree(rustMSVCNameParser)
+
             val typeNode = TypeNode.parse(type)
             typeNode.replaceMSVCTypes()
 

@@ -55,6 +55,7 @@ plugins {
     id("org.jetbrains.grammarkit") version "2021.2.2"
     id("net.saliman.properties") version "1.5.2"
     id("org.gradle.test-retry") version "1.4.0"
+    antlr
 }
 
 idea {
@@ -71,6 +72,7 @@ allprojects {
         plugin("org.jetbrains.grammarkit")
         plugin("org.jetbrains.intellij")
         plugin("org.gradle.test-retry")
+        plugin("antlr")
     }
 
     repositories {
@@ -501,6 +503,8 @@ project(":debugger") {
     dependencies {
         implementation(project(":"))
         testImplementation(project(":", "testOutput"))
+        antlr("org.antlr:antlr4:4.10.1")
+//        compile("org.antlr:antlr4-runtime:4.10.1")
     }
 }
 
