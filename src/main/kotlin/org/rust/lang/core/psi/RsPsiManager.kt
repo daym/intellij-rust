@@ -33,6 +33,7 @@ import org.rust.lang.core.psi.ext.RsElement
 import org.rust.lang.core.psi.ext.RsMacroDefinitionBase
 import org.rust.lang.core.psi.ext.findModificationTrackerOwner
 import org.rust.lang.core.psi.ext.isTopLevelExpansion
+import org.rust.lang.core.resolve2.defMapService
 
 /** Don't subscribe directly or via plugin.xml lazy listeners. Use [RsPsiManager.subscribeRustStructureChange] */
 private val RUST_STRUCTURE_CHANGE_TOPIC: Topic<RustStructureChangeListener> = Topic.create(
@@ -205,7 +206,11 @@ class RsPsiManagerImpl(val project: Project) : RsPsiManager, Disposable {
         }
 
         if (isStructureModification) {
-            incRustStructureModificationCount(file, psi)
+            if (owner is RsMacroCall) {
+                project.defMapService.incrementModificationTracker()
+            } else {
+                incRustStructureModificationCount(file, psi)
+            }
         }
         project.messageBus.syncPublisher(RUST_PSI_CHANGE_TOPIC).rustPsiChanged(file, psi, isStructureModification)
     }

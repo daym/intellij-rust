@@ -11,6 +11,7 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.ModificationTracker
+import com.intellij.openapi.util.SimpleModificationTracker
 import com.intellij.openapi.vfs.VirtualFileWithId
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
@@ -143,14 +144,18 @@ class DefMapService(val project: Project) : Disposable {
     /** Merged map of [CrateDefMap.missedFiles] for all crates */
     private val missedFiles: ConcurrentHashMap<Path, CratePersistentId> = ConcurrentHashMap()
 
-    private val structureModificationTracker: ModificationTracker =
-        project.rustPsiManager.rustStructureModificationTracker
+    /** Optimization: [CrateDefMap] will be considered up-to-date if [DefMapHolder.modificationCount] equals it */
+    private val modificationTracker: SimpleModificationTracker = SimpleModificationTracker()
 
     init {
         setupListeners()
         if (System.getenv("INTELLIJ_RUST_FORCE_USE_OLD_RESOLVE") != null) {
             IS_NEW_RESOLVE_ENABLED_KEY.setValue(false)
         }
+    }
+
+    fun incrementModificationTracker() {
+        modificationTracker.incModificationCount()
     }
 
     /**
@@ -177,6 +182,10 @@ class DefMapService(val project: Project) : Disposable {
                 }
             }
         })
+        project.rustPsiManager.subscribeRustStructureChange(connection, object : RustStructureChangeListener {
+            override fun rustStructureChanged(file: PsiFile?, changedElement: PsiElement?) =
+                incrementModificationTracker()
+        })
 
         connection.subscribe(CargoProjectsService.CARGO_PROJECTS_TOPIC, CargoProjectsListener { _, _ ->
             scheduleRecheckAllDefMaps()
@@ -184,7 +193,7 @@ class DefMapService(val project: Project) : Disposable {
     }
 
     fun getDefMapHolder(crate: CratePersistentId): DefMapHolder {
-        return defMaps.computeIfAbsent(crate) { DefMapHolder(crate, structureModificationTracker) }
+        return defMaps.computeIfAbsent(crate) { DefMapHolder(crate, modificationTracker) }
     }
 
     fun hasDefMapFor(crate: CratePersistentId): Boolean = defMaps[crate] != null
