@@ -8,9 +8,9 @@ package org.rust.ide.refactoring
 import com.intellij.refactoring.BaseRefactoringProcessor
 import com.intellij.testFramework.PsiTestUtil
 import org.intellij.lang.annotations.Language
-import org.rust.EmptyDescriptor
-import org.rust.ProjectDescriptor
-import org.rust.RsTestBase
+import org.rust.*
+import org.rust.ide.experiments.RsExperiments
+import org.rust.lang.core.macros.MacroExpansionScope.WORKSPACE
 import org.rust.lang.core.psi.RsModDeclItem
 import org.rust.lang.core.psi.ext.descendantsOfType
 import org.rust.openapiext.toPsiDirectory
@@ -669,6 +669,49 @@ class RenameTest : RsTestBase() {
         macro_rules! foo { ($ i/*caret*/:item) => { $ i }; }
     """, """
         macro_rules! foo { ($ b:item) => { $ b }; }
+    """)
+
+    @ExpandMacros(WORKSPACE)
+    fun `test rename function expanded from declarative macro`() = doTest("bar", """
+        macro_rules! foo { ($ i:item) => { $ i }; }
+        foo! {
+            fn foo() {}
+        }
+        fn main() {
+            foo/*caret*/();
+        }
+    """, """
+        macro_rules! foo { ($ i:item) => { $ i }; }
+        foo! {
+            fn bar() {}
+        }
+        fn main() {
+            bar();
+        }
+    """)
+
+    @MinRustcVersion("1.46.0")
+    @ExpandMacros(WORKSPACE)
+    @WithExperimentalFeatures(RsExperiments.EVALUATE_BUILD_SCRIPTS, RsExperiments.PROC_MACROS)
+    @ProjectDescriptor(WithProcMacroRustProjectDescriptor::class)
+    fun `test rename function expanded from attr proc macro`() = doTest("bar", """
+        use test_proc_macros::attr_as_is;
+
+        #[attr_as_is]
+        fn foo() {}
+
+        fn main() {
+            foo/*caret*/();
+        }
+    """, """
+        use test_proc_macros::attr_as_is;
+
+        #[attr_as_is]
+        fn bar() {}
+
+        fn main() {
+            bar();
+        }
     """)
 
     private fun doTest(
