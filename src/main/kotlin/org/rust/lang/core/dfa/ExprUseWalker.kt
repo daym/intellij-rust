@@ -449,6 +449,11 @@ class ExprUseWalker(private val delegate: Delegate, private val mc: MemoryCatego
         val guard = arm.matchArmGuard
         if (guard?.let == null) { // TODO: support `if let guard` syntax
             guard?.expr?.let { consumeExpr(it) }
+        } else {
+            val init = guard.expr!!
+            walkExpr(init)
+            val initCmt = mc.processExpr(init)
+            guard.pat?.let { walkIrrefutablePat(initCmt, it) }
         }
         arm.expr?.let { consumeExpr(it) }
     }
