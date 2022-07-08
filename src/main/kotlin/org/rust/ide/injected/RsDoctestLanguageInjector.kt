@@ -97,7 +97,8 @@ class RsDoctestLanguageInjector : MultiHostInjector {
         // We use a lexer instead of parser here to reduce CPU usage. It is less strict,
         // i.e. sometimes we can think that main function exists when it's not. But such
         // code is very rare, so I think this implementation in reasonable.
-        val (alreadyHasMain, alreadyHasExternCrate) = if (fullInjectionText.contains("main")) {
+        val needLexerCheck = fullInjectionText.contains("main") || fullInjectionText.contains("extern crate")
+        val (alreadyHasMain, alreadyHasExternCrate) = if (needLexerCheck) {
             val lexer = project.createRustPsiBuilder(fullInjectionText)
             val alreadyHasMain = lexer.probe {
                 lexer.findTokenSequence(RsElementTypes.FN, "main", RsElementTypes.LPAREN)
